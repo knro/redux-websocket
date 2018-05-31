@@ -7,15 +7,14 @@ import { connecting, open, closed, message } from './actions';
 import { createWebsocket } from './websocket';
 
 // Action types to be dispatched by the user
-export const WEBSOCKET_CONNECT = 'WEBSOCKET:CONNECT';
-export const WEBSOCKET_DISCONNECT = 'WEBSOCKET:DISCONNECT';
-export const WEBSOCKET_SEND = 'WEBSOCKET:SEND';
-export const WEBSOCKET_SEND_BINARY = 'WEBSOCKET:SEND_BINARY';
+export const WEBSOCKET_BINARY_CONNECT = 'WEBSOCKET:BINARY_CONNECT';
+export const WEBSOCKET_BINARY_DISCONNECT = 'WEBSOCKET:BINARY_DISCONNECT';
+export const WEBSOCKET_BINARY_SEND = 'WEBSOCKET:BINARY_SEND';
 // Action types dispatched by the WebSocket implementation
-export const WEBSOCKET_CONNECTING = 'WEBSOCKET:CONNECTING';
-export const WEBSOCKET_OPEN = 'WEBSOCKET:OPEN';
-export const WEBSOCKET_CLOSED = 'WEBSOCKET:CLOSED';
-export const WEBSOCKET_MESSAGE = 'WEBSOCKET:MESSAGE';
+export const WEBSOCKET_BINARY_CONNECTING = 'WEBSOCKET:BINARY_CONNECTING';
+export const WEBSOCKET_BINARY_OPEN = 'WEBSOCKET:BINARY_OPEN';
+export const WEBSOCKET_BINARY_CLOSED = 'WEBSOCKET:BINARY_CLOSED';
+export const WEBSOCKET_BINARY_MESSAGE = 'WEBSOCKET:BINARY_MESSAGE';
 
 const createMiddleware = () => {
   // Hold a reference to the WebSocket instance in use.
@@ -61,30 +60,20 @@ const createMiddleware = () => {
   return (store: Object) => (next: Function) => (action: Action) => {
     switch (action.type) {
       // User request to connect
-      case WEBSOCKET_CONNECT:
+      case WEBSOCKET_BINARY_CONNECT:
         close();
         initialize(store, action.payload);
         next(action);
         break;
 
       // User request to disconnect
-      case WEBSOCKET_DISCONNECT:
+      case WEBSOCKET_BINARY_DISCONNECT:
         close();
         next(action);
         break;
 
-      // User request to send a message
-      case WEBSOCKET_SEND:
-        if (websocket) {
-          websocket.send(JSON.stringify(action.payload));
-        } else {
-          console.warn('WebSocket is closed, ignoring. Trigger a WEBSOCKET_CONNECT first.');
-        }
-        next(action);
-        break;
-
         // User request to send a message
-      case WEBSOCKET_SEND_BINARY:
+      case WEBSOCKET_BINARY_SEND:
         if (websocket) {
           websocket.send(action.payload);
         } else {

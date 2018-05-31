@@ -12,7 +12,7 @@ var _index = require('./index');
 
 var connecting = exports.connecting = function connecting(event, websocket) {
   return {
-    type: _index.WEBSOCKET_CONNECTING,
+    type: _index.WEBSOCKET_BINARY_CONNECTING,
     payload: {
       timestamp: new Date(),
       event: event,
@@ -23,7 +23,7 @@ var connecting = exports.connecting = function connecting(event, websocket) {
 
 var open = exports.open = function open(event) {
   return {
-    type: _index.WEBSOCKET_OPEN,
+    type: _index.WEBSOCKET_BINARY_OPEN,
     payload: {
       timestamp: new Date(),
       event: event
@@ -33,7 +33,7 @@ var open = exports.open = function open(event) {
 
 var closed = exports.closed = function closed(event) {
   return {
-    type: _index.WEBSOCKET_CLOSED,
+    type: _index.WEBSOCKET_BINARY_CLOSED,
     payload: {
       timestamp: new Date(),
       event: event
@@ -43,7 +43,7 @@ var closed = exports.closed = function closed(event) {
 
 var message = exports.message = function message(event) {
   return {
-    type: _index.WEBSOCKET_MESSAGE,
+    type: _index.WEBSOCKET_BINARY_MESSAGE,
     payload: {
       timestamp: new Date(),
       data: event.data,

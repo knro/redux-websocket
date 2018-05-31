@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.WEBSOCKET_MESSAGE = exports.WEBSOCKET_CLOSED = exports.WEBSOCKET_OPEN = exports.WEBSOCKET_CONNECTING = exports.WEBSOCKET_SEND_BINARY = exports.WEBSOCKET_SEND = exports.WEBSOCKET_DISCONNECT = exports.WEBSOCKET_CONNECT = undefined;
+exports.WEBSOCKET_BINARY_MESSAGE = exports.WEBSOCKET_BINARY_CLOSED = exports.WEBSOCKET_BINARY_OPEN = exports.WEBSOCKET_BINARY_CONNECTING = exports.WEBSOCKET_BINARY_SEND = exports.WEBSOCKET_BINARY_DISCONNECT = exports.WEBSOCKET_BINARY_CONNECT = undefined;
 
 var _redux = require('redux');
 
@@ -22,16 +22,15 @@ var _websocket = require('./websocket');
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // Action types to be dispatched by the user
-var WEBSOCKET_CONNECT = exports.WEBSOCKET_CONNECT = 'WEBSOCKET:CONNECT'; /* eslint-env browser */
+var WEBSOCKET_BINARY_CONNECT = exports.WEBSOCKET_BINARY_CONNECT = 'WEBSOCKET:BINARY_CONNECT'; /* eslint-env browser */
 
-var WEBSOCKET_DISCONNECT = exports.WEBSOCKET_DISCONNECT = 'WEBSOCKET:DISCONNECT';
-var WEBSOCKET_SEND = exports.WEBSOCKET_SEND = 'WEBSOCKET:SEND';
-var WEBSOCKET_SEND_BINARY = exports.WEBSOCKET_SEND_BINARY = 'WEBSOCKET:SEND_BINARY';
+var WEBSOCKET_BINARY_DISCONNECT = exports.WEBSOCKET_BINARY_DISCONNECT = 'WEBSOCKET:BINARY_DISCONNECT';
+var WEBSOCKET_BINARY_SEND = exports.WEBSOCKET_BINARY_SEND = 'WEBSOCKET:BINARY_SEND';
 // Action types dispatched by the WebSocket implementation
-var WEBSOCKET_CONNECTING = exports.WEBSOCKET_CONNECTING = 'WEBSOCKET:CONNECTING';
-var WEBSOCKET_OPEN = exports.WEBSOCKET_OPEN = 'WEBSOCKET:OPEN';
-var WEBSOCKET_CLOSED = exports.WEBSOCKET_CLOSED = 'WEBSOCKET:CLOSED';
-var WEBSOCKET_MESSAGE = exports.WEBSOCKET_MESSAGE = 'WEBSOCKET:MESSAGE';
+var WEBSOCKET_BINARY_CONNECTING = exports.WEBSOCKET_BINARY_CONNECTING = 'WEBSOCKET:BINARY_CONNECTING';
+var WEBSOCKET_BINARY_OPEN = exports.WEBSOCKET_BINARY_OPEN = 'WEBSOCKET:BINARY_OPEN';
+var WEBSOCKET_BINARY_CLOSED = exports.WEBSOCKET_BINARY_CLOSED = 'WEBSOCKET:BINARY_CLOSED';
+var WEBSOCKET_BINARY_MESSAGE = exports.WEBSOCKET_BINARY_MESSAGE = 'WEBSOCKET:BINARY_MESSAGE';
 
 var createMiddleware = function createMiddleware() {
   // Hold a reference to the WebSocket instance in use.
@@ -81,30 +80,20 @@ var createMiddleware = function createMiddleware() {
       return function (action) {
         switch (action.type) {
           // User request to connect
-          case WEBSOCKET_CONNECT:
+          case WEBSOCKET_BINARY_CONNECT:
             close();
             initialize(store, action.payload);
             next(action);
             break;
 
           // User request to disconnect
-          case WEBSOCKET_DISCONNECT:
+          case WEBSOCKET_BINARY_DISCONNECT:
             close();
             next(action);
             break;
 
           // User request to send a message
-          case WEBSOCKET_SEND:
-            if (websocket) {
-              websocket.send(JSON.stringify(action.payload));
-            } else {
-              console.warn('WebSocket is closed, ignoring. Trigger a WEBSOCKET_CONNECT first.');
-            }
-            next(action);
-            break;
-
-          // User request to send a message
-          case WEBSOCKET_SEND_BINARY:
+          case WEBSOCKET_BINARY_SEND:
             if (websocket) {
               websocket.send(action.payload);
             } else {
