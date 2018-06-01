@@ -35,7 +35,8 @@ var WEBSOCKET_MESSAGE = exports.WEBSOCKET_MESSAGE = 'WEBSOCKET:MESSAGE';
 
 var createMiddleware = function createMiddleware() {
     // Hold a reference to the WebSocket instance in use.
-    var websockets = void 0;
+    //let websocket: ?WebSocket;
+    var websockets = new Array();
 
     /**
      * A function to create the WebSocket object and attach the standard callbacks
@@ -86,21 +87,21 @@ var createMiddleware = function createMiddleware() {
                 switch (action.type) {
                     // User request to connect
                     case WEBSOCKET_CONNECT:
-                        close(action.payload.url);
+                        close(action.url);
                         initialize(store, action.payload);
                         next(action);
                         break;
 
                     // User request to disconnect
                     case WEBSOCKET_DISCONNECT:
-                        close(action.payload.url);
+                        close(action.url);
                         next(action);
                         break;
 
                     // User request to send a text message
                     case WEBSOCKET_SEND_TEXT:
                         for (var i = 0; i < websockets.length; i++) {
-                            if (websockets[i].url === action.payload.url) {
+                            if (websockets[i].url === action.url) {
                                 websockets[i].send(JSON.stringify(action.payload));
                                 next(action);
                                 return;
@@ -112,7 +113,7 @@ var createMiddleware = function createMiddleware() {
                     // User request to send a text message
                     case WEBSOCKET_SEND_BINARY:
                         for (var _i = 0; _i < websockets.length; _i++) {
-                            if (websockets[_i].url === action.payload.url) {
+                            if (websockets[_i].url === action.url) {
                                 websockets[_i].send(action.payload);
                                 next(action);
                                 return;

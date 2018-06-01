@@ -1,4 +1,5 @@
 interface WebSocketInterface {
   close(code?: string, reason?: string);
-  send(data: string);
+  sendText(data: string);
+  sendBinary(data: Blob);
 }

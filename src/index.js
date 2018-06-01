@@ -70,14 +70,14 @@ const createMiddleware = () => {
         {
             // User request to connect
             case WEBSOCKET_CONNECT:
-                close(action.payload.url);
+                close(action.url);
                 initialize(store, action.payload);
                 next(action);
                 break;
 
             // User request to disconnect
             case WEBSOCKET_DISCONNECT:
-                close(action.payload.url);
+                close(action.url);
                 next(action);
                 break;
 
@@ -85,7 +85,7 @@ const createMiddleware = () => {
             case WEBSOCKET_SEND_TEXT:
                 for (let i=0; i < websockets.length; i++ )
                 {
-                    if (websockets[i].url === action.payload.url)
+                    if (websockets[i].url === action.url)
                     {
                         websockets[i].send(JSON.stringify(action.payload));
                         next(action);
@@ -100,7 +100,7 @@ const createMiddleware = () => {
             case WEBSOCKET_SEND_BINARY:
                 for (let i=0; i < websockets.length; i++ )
                 {
-                    if (websockets[i].url === action.payload.url)
+                    if (websockets[i].url === action.url)
                     {
                         websockets[i].send(action.payload);
                         next(action);
