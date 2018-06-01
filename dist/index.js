@@ -17,7 +17,7 @@ var _partialRight2 = _interopRequireDefault(_partialRight);
 
 var _actions = require('./actions');
 
-var _websocket2 = require('./websocket');
+var _websocket = require('./websocket');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -44,7 +44,7 @@ var createMiddleware = function createMiddleware() {
         var dispatch = _ref.dispatch;
 
         // Instantiate the websocket.
-        var websocket = (0, _websocket2.createWebsocket)(config);
+        var websocket = (0, _websocket.createWebsocket)(config);
 
         // Function will dispatch actions returned from action creators.
         var dispatchAction = (0, _partial2.default)(_redux.compose, [dispatch]);
@@ -67,35 +67,11 @@ var createMiddleware = function createMiddleware() {
      * Close the WebSocket connection and cleanup
      */
     var close = function close(url) {
-        var _iteratorNormalCompletion = true;
-        var _didIteratorError = false;
-        var _iteratorError = undefined;
-
-        try {
-            for (var _iterator = websockets[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-                var websocket = _step.value;
-
-                if (websocket.url === url) {
-                    console.warn('Closing WebSocket connection to ' + websocket.url + ' ...');
-                    websocket.close();
-                    // Remove from array
-                    websockets = websockets.filter(function (item) {
-                        return item.url !== url;
-                    });
-                }
-            }
-        } catch (err) {
-            _didIteratorError = true;
-            _iteratorError = err;
-        } finally {
-            try {
-                if (!_iteratorNormalCompletion && _iterator.return) {
-                    _iterator.return();
-                }
-            } finally {
-                if (_didIteratorError) {
-                    throw _iteratorError;
-                }
+        for (var i = 0; i < websockets.length; i++) {
+            if (websockets[i].url === url) {
+                console.warn('Closing WebSocket connection to ' + websockets[i].url + ' ...');
+                websockets[i].close();
+                websockets.splice(i, 1);
             }
         }
     };
@@ -123,69 +99,25 @@ var createMiddleware = function createMiddleware() {
 
                     // User request to send a text message
                     case WEBSOCKET_SEND_TEXT:
-                        var _iteratorNormalCompletion2 = true;
-                        var _didIteratorError2 = false;
-                        var _iteratorError2 = undefined;
-
-                        try {
-                            for (var _iterator2 = websockets[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                                var websocket = _step2.value;
-
-                                if (websocket.url === action.payload.url) {
-                                    websocket.send(JSON.stringify(action.payload));
-                                    next(action);
-                                    return;
-                                }
-                            }
-                        } catch (err) {
-                            _didIteratorError2 = true;
-                            _iteratorError2 = err;
-                        } finally {
-                            try {
-                                if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                                    _iterator2.return();
-                                }
-                            } finally {
-                                if (_didIteratorError2) {
-                                    throw _iteratorError2;
-                                }
+                        for (var i = 0; i < websockets.length; i++) {
+                            if (websockets[i].url === action.payload.url) {
+                                websockets[i].send(JSON.stringify(action.payload));
+                                next(action);
+                                return;
                             }
                         }
-
                         console.warn('WebSocket is closed, ignoring. Trigger a WEBSOCKET_CONNECT first.');
                         break;
 
                     // User request to send a text message
                     case WEBSOCKET_SEND_BINARY:
-                        var _iteratorNormalCompletion3 = true;
-                        var _didIteratorError3 = false;
-                        var _iteratorError3 = undefined;
-
-                        try {
-                            for (var _iterator3 = websockets[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-                                var _websocket = _step3.value;
-
-                                if (_websocket.url === action.payload.url) {
-                                    _websocket.send(action.payload);
-                                    next(action);
-                                    return;
-                                }
-                            }
-                        } catch (err) {
-                            _didIteratorError3 = true;
-                            _iteratorError3 = err;
-                        } finally {
-                            try {
-                                if (!_iteratorNormalCompletion3 && _iterator3.return) {
-                                    _iterator3.return();
-                                }
-                            } finally {
-                                if (_didIteratorError3) {
-                                    throw _iteratorError3;
-                                }
+                        for (var _i = 0; _i < websockets.length; _i++) {
+                            if (websockets[_i].url === action.payload.url) {
+                                websockets[_i].send(action.payload);
+                                next(action);
+                                return;
                             }
                         }
-
                         console.warn('WebSocket is closed, ignoring. Trigger a WEBSOCKET_CONNECT first.');
                         break;
 

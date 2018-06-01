@@ -50,14 +50,13 @@ const createMiddleware = () => {
      * Close the WebSocket connection and cleanup
      */
     const close = (url) => {
-        for (const websocket of websockets)
+        for (let i=0; i < websockets.length; i++ )
         {
-            if (websocket.url === url)
+            if (websockets[i].url === url)
             {
-                console.warn(`Closing WebSocket connection to ${websocket.url} ...`);
-                websocket.close();
-                // Remove from array
-                websockets = websockets.filter(item => item.url !== url);
+                console.warn(`Closing WebSocket connection to ${websockets[i].url} ...`);
+                websockets[i].close();
+                websockets.splice(i, 1);
             }
         }
     };
@@ -84,11 +83,11 @@ const createMiddleware = () => {
 
             // User request to send a text message
             case WEBSOCKET_SEND_TEXT:
-                for (const websocket of websockets)
+                for (let i=0; i < websockets.length; i++ )
                 {
-                    if (websocket.url === action.payload.url)
+                    if (websockets[i].url === action.payload.url)
                     {
-                        websocket.send(JSON.stringify(action.payload));
+                        websockets[i].send(JSON.stringify(action.payload));
                         next(action);
                         return;
                     }
@@ -99,11 +98,11 @@ const createMiddleware = () => {
 
             // User request to send a text message
             case WEBSOCKET_SEND_BINARY:
-                for (const websocket of websockets)
+                for (let i=0; i < websockets.length; i++ )
                 {
-                    if (websocket.url === action.payload.url)
+                    if (websockets[i].url === action.payload.url)
                     {
-                        websocket.send(action.payload);
+                        websockets[i].send(action.payload);
                         next(action);
                         return;
                     }
