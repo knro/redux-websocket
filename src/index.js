@@ -20,7 +20,7 @@ export const WEBSOCKET_MESSAGE = 'WEBSOCKET:MESSAGE';
 const createMiddleware = () => {
     // Hold a reference to the WebSocket instance in use.
     //let websocket: ?WebSocket;
-    let websockets: [];
+    let websockets = new Array();
 
     /**
      * A function to create the WebSocket object and attach the standard callbacks
