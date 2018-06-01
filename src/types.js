@@ -1,7 +1,8 @@
 // Action types to be dispatched by the user
 export const WEBSOCKET_CONNECT = 'WEBSOCKET:CONNECT';
 export const WEBSOCKET_DISCONNECT = 'WEBSOCKET:DISCONNECT';
-export const WEBSOCKET_SEND = 'WEBSOCKET:SEND';
+export const WEBSOCKET_SEND_TEXT = 'WEBSOCKET:SEND_TEXT';
+export const WEBSOCKET_SEND_BINARY = 'WEBSOCKET:SEND_BINARY';
 // Action types dispatched by the WebSocket implementation
 export const WEBSOCKET_CONNECTING = 'WEBSOCKET:CONNECTING';
 export const WEBSOCKET_OPEN = 'WEBSOCKET:OPEN';

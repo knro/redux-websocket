@@ -9,7 +9,8 @@ import { createWebsocket } from './websocket';
 // Action types to be dispatched by the user
 export const WEBSOCKET_CONNECT = 'WEBSOCKET:CONNECT';
 export const WEBSOCKET_DISCONNECT = 'WEBSOCKET:DISCONNECT';
-export const WEBSOCKET_SEND = 'WEBSOCKET:SEND';
+export const WEBSOCKET_SEND_TEXT = 'WEBSOCKET:SEND_TEXT';
+export const WEBSOCKET_SEND_BINARY = 'WEBSOCKET:SEND_BINARY';
 // Action types dispatched by the WebSocket implementation
 export const WEBSOCKET_CONNECTING = 'WEBSOCKET:CONNECTING';
 export const WEBSOCKET_OPEN = 'WEBSOCKET:OPEN';
@@ -72,10 +73,20 @@ const createMiddleware = () => {
         next(action);
         break;
 
-      // User request to send a message
-      case WEBSOCKET_SEND:
+      // User request to send a text message
+      case WEBSOCKET_SEND_TEXT:
         if (websocket) {
           websocket.send(JSON.stringify(action.payload));
+        } else {
+          console.warn('WebSocket is closed, ignoring. Trigger a WEBSOCKET_CONNECT first.');
+        }
+        next(action);
+        break;
+
+        // User request to send a text message
+      case WEBSOCKET_SEND_BINARY:
+        if (websocket) {
+          websocket.send(action.payload);
         } else {
           console.warn('WebSocket is closed, ignoring. Trigger a WEBSOCKET_CONNECT first.');
         }
