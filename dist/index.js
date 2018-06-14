@@ -53,8 +53,15 @@ var createMiddleware = function createMiddleware() {
         // Setup handlers to be called like this:
         // dispatch(open(event));
         websocket.onopen = dispatchAction(_actions.open);
-        websocket.onclose = dispatchAction(_actions.closed);
+        websocket.onclose = function (event) {
+            dispatchAction(_actions.closed)(event);
+            if (event.code === 1006) reconnect(websocket, dispatch, config);
+        };
         websocket.onmessage = dispatchAction(_actions.message);
+        // websocket.onerror = (event) => {
+        //     if (event.code === 'ECONNREFUSED')
+        //         reconnect(websocket, dispatch, config);
+        // };
 
         // An optimistic callback assignment for WebSocket objects that support this
         var onConnecting = dispatchAction(_actions.connecting);
@@ -62,6 +69,18 @@ var createMiddleware = function createMiddleware() {
         websocket.onconnecting = (0, _partialRight2.default)(onConnecting, [websocket]);
 
         websockets.push(websocket);
+    };
+
+    var reconnect = function reconnect(websocket, dispatch, config) {
+        // If abnormal close, try to reconnect
+        setTimeout(function () {
+            console.log("Reconnecting websocket to " + websocket.url);
+            // Remove from list
+            for (var i = 0; i < websockets.length; i++) {
+                if (websockets[i].url === websocket.url) websockets.splice(i, 1);
+            }
+            initialize({ dispatch: dispatch }, config);
+        }, 5000);
     };
 
     /**
