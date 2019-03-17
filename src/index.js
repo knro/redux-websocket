@@ -23,7 +23,6 @@ const createMiddleware = () => {
     // Hold a reference to the WebSocket instance in use.
     //let websocket: ?WebSocket;
     let websockets = new Array();
-    let reconnects = 0;
 
     /**
      * A function to create the WebSocket object and attach the standard callbacks
@@ -31,6 +30,7 @@ const createMiddleware = () => {
     const initialize = ({dispatch}, config: Config) => {
         // Instantiate the websocket.
         const websocket = createWebsocket(config);
+        websocket.reconnects = 0;
 
         // Function will dispatch actions returned from action creators.
         const dispatchAction = partial(compose, [dispatch]);
@@ -38,12 +38,11 @@ const createMiddleware = () => {
         // Setup handlers to be called like this:
         // dispatch(open(event));
         websocket.onopen = () => {
-            reconnects=0;
             dispatchAction(open);
         };
         websocket.onclose = (event) => {
             dispatchAction(closed)(event);
-            if (event.code === 1006 && reconnects < MAX_RECONNECT_ATTEMPTS)
+            if (event.code === 1006 && websocket.reconnects < MAX_RECONNECT_ATTEMPTS)
                 reconnect(websocket, dispatch, config);
 
         };
@@ -63,8 +62,8 @@ const createMiddleware = () => {
     };
 
     const reconnect = (websocket, dispatch, config) => {
-        let timeout = 5000 + reconnects*250;
-        reconnects++;
+        let timeout = 5000 + websocket.reconnects*250;
+        websocket.reconnects++;
         // If abnormal close, try to reconnect
         setTimeout( function()
         {
