@@ -58,6 +58,7 @@ const createMiddleware = () => {
         // Add the websocket as the 2nd argument (after the event).
         websocket.onconnecting = partialRight(onConnecting, [websocket]);
 
+        websocket.url = config.url;
         websockets.push(websocket);
     };
 
