@@ -38,7 +38,7 @@ var MAX_RECONNECT_ATTEMPTS = 500;
 var createMiddleware = function createMiddleware() {
     // Hold a reference to the WebSocket instance in use.
     //let websocket: ?WebSocket;
-    var websockets = new Array();
+    var websockets = [];
 
     /**
      * A function to create the WebSocket object and attach the standard callbacks
@@ -48,32 +48,28 @@ var createMiddleware = function createMiddleware() {
 
         // Instantiate the websocket.
         var websocket = (0, _websocket.createWebsocket)(config);
+
         websocket.reconnects = 0;
+        websocket.url = config.url;
 
         // Function will dispatch actions returned from action creators.
         var dispatchAction = (0, _partial2.default)(_redux.compose, [dispatch]);
 
-        // Setup handlers to be called like this:
-        // dispatch(open(event));
-        websocket.onopen = function () {
-            dispatchAction(_actions.open);
-        };
+        // On Opening socket
+        websocket.onopen = dispatchAction(_actions.open);
+        // On receiving message
+        websocket.onmessage = dispatchAction(_actions.message);
+        // On Closing socket
         websocket.onclose = function (event) {
             dispatchAction(_actions.closed)(event);
             if (event.code === 1006 && websocket.reconnects < MAX_RECONNECT_ATTEMPTS) reconnect(websocket, dispatch, config);
         };
-        websocket.onmessage = dispatchAction(_actions.message);
-        // websocket.onerror = (event) => {
-        //     if (event.code === 'ECONNREFUSED')
-        //         reconnect(websocket, dispatch, config);
-        // };
 
         // An optimistic callback assignment for WebSocket objects that support this
         var onConnecting = dispatchAction(_actions.connecting);
         // Add the websocket as the 2nd argument (after the event).
         websocket.onconnecting = (0, _partialRight2.default)(onConnecting, [websocket]);
 
-        websocket.url = config.url;
         websockets.push(websocket);
     };
 
