@@ -83,7 +83,7 @@ const createMiddleware = () => {
         {
             if (websockets[i].url === url)
             {
-                console.warn(`Closing WebSocket connection to ${websockets[i].url} ...`);
+                console.log(`Closing WebSocket connection to ${websockets[i].url} ...`);
                 websockets[i].close();
                 websockets.splice(i, 1);
             }

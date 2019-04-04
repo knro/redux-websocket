@@ -93,7 +93,7 @@ var createMiddleware = function createMiddleware() {
     var close = function close(url) {
         for (var i = 0; i < websockets.length; i++) {
             if (websockets[i].url === url) {
-                console.warn('Closing WebSocket connection to ' + websockets[i].url + ' ...');
+                console.log('Closing WebSocket connection to ' + websockets[i].url + ' ...');
                 websockets[i].close();
                 websockets.splice(i, 1);
             }
