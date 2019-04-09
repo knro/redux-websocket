@@ -52,7 +52,7 @@ var createMiddleware = function createMiddleware() {
         websocket.reconnects = 0;
         // Web browsers define URL
         // But on devices it is not defined for some reason
-        if (websocket.url.length === 0) websocket.url = config.url;
+        if (websocket.url === undefined) websocket.url = config.url;
 
         // Function will dispatch actions returned from action creators.
         var dispatchAction = (0, _partial2.default)(_redux.compose, [dispatch]);

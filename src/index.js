@@ -34,7 +34,7 @@ const createMiddleware = () => {
         websocket.reconnects = 0;
         // Web browsers define URL
         // But on devices it is not defined for some reason
-        if (websocket.url.length === 0)
+        if (websocket.url === undefined)
             websocket.url = config.url;
 
         // Function will dispatch actions returned from action creators.
