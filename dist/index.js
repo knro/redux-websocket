@@ -125,14 +125,15 @@ var createMiddleware = function createMiddleware() {
 
                     // User request to send a text message
                     case WEBSOCKET_SEND_TEXT:
+                        var _message = JSON.stringify(action.payload);
                         for (var i = 0; i < websockets.length; i++) {
                             if (websockets[i].url === action.url) {
-                                websockets[i].send(JSON.stringify(action.payload));
+                                websockets[i].send(_message);
                                 next(action);
                                 return;
                             }
                         }
-                        console.warn('WebSocket is closed, ignoring. Trigger a WEBSOCKET_CONNECT first.');
+                        console.warn('WebSocket is closed, ignoring text message (%s). Trigger a WEBSOCKET_CONNECT first.', _message);
                         break;
 
                     // User request to send a text message
@@ -144,7 +145,7 @@ var createMiddleware = function createMiddleware() {
                                 return;
                             }
                         }
-                        console.warn('WebSocket is closed, ignoring. Trigger a WEBSOCKET_CONNECT first.');
+                        console.warn('WebSocket is closed, ignoring binary message. Trigger a WEBSOCKET_CONNECT first.');
                         break;
 
                     default:
