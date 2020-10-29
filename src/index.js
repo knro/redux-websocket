@@ -19,7 +19,8 @@ export const WEBSOCKET_MESSAGE = 'WEBSOCKET:MESSAGE';
 
 const MAX_RECONNECT_ATTEMPTS = 500;
 
-const createMiddleware = () => {
+const createMiddleware = () =>
+{
     // Hold a reference to the WebSocket instance in use.
     //let websocket: ?WebSocket;
     let websockets = [];
@@ -27,7 +28,8 @@ const createMiddleware = () => {
     /**
      * A function to create the WebSocket object and attach the standard callbacks
      */
-    const initialize = ({dispatch}, config: Config) => {
+    const initialize = ({dispatch}, config: Config) =>
+    {
         // Instantiate the websocket.
         const websocket = createWebsocket(config);
 
@@ -62,15 +64,17 @@ const createMiddleware = () => {
         websockets.push(websocket);
     };
 
-    const reconnect = (websocket, dispatch, config) => {
-        let timeout = 5000 + websocket.reconnects*250;
+    const reconnect = (websocket, dispatch, config) =>
+    {
+        let timeout = 5000 + websocket.reconnects * 250;
         websocket.reconnects++;
         // If abnormal close, try to reconnect
-        setTimeout( function()
+        setTimeout(function ()
         {
             console.log("Reconnecting websocket to " + websocket.url);
             // Remove from list
-            for (let i=0; i < websockets.length; i++ ) {
+            for (let i = 0; i < websockets.length; i++)
+            {
                 if (websockets[i].url === websocket.url)
                     websockets.splice(i, 1);
             }
@@ -81,8 +85,9 @@ const createMiddleware = () => {
     /**
      * Close the WebSocket connection and cleanup
      */
-    const close = (url) => {
-        for (let i=0; i < websockets.length; i++ )
+    const close = (url) =>
+    {
+        for (let i = 0; i < websockets.length; i++)
         {
             if (websockets[i].url === url)
             {
@@ -97,7 +102,8 @@ const createMiddleware = () => {
      * The primary Redux middleware function.
      * Each of the actions handled are user-dispatched.
      */
-    return (store: Object) => (next: Function) => (action: Action) => {
+    return (store: Object) => (next: Function) => (action: Action) =>
+    {
         switch (action.type)
         {
             // User request to connect
@@ -115,22 +121,23 @@ const createMiddleware = () => {
 
             // User request to send a text message
             case WEBSOCKET_SEND_TEXT:
-                for (let i=0; i < websockets.length; i++ )
+                const message = JSON.stringify(action.payload);
+                for (let i = 0; i < websockets.length; i++)
                 {
                     if (websockets[i].url === action.url)
                     {
-                        websockets[i].send(JSON.stringify(action.payload));
+                        websockets[i].send(message);
                         next(action);
                         return;
                     }
                 }
-                console.warn('WebSocket is closed, ignoring. Trigger a WEBSOCKET_CONNECT first.');
+                console.warn('WebSocket is closed, ignoring text message (%s). Trigger a WEBSOCKET_CONNECT first.', message);
                 break;
 
 
             // User request to send a text message
             case WEBSOCKET_SEND_BINARY:
-                for (let i=0; i < websockets.length; i++ )
+                for (let i = 0; i < websockets.length; i++)
                 {
                     if (websockets[i].url === action.url)
                     {
@@ -139,7 +146,7 @@ const createMiddleware = () => {
                         return;
                     }
                 }
-                console.warn('WebSocket is closed, ignoring. Trigger a WEBSOCKET_CONNECT first.');
+                console.warn('WebSocket is closed, ignoring binary message. Trigger a WEBSOCKET_CONNECT first.');
                 break;
 
             default:
