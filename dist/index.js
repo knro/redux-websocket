@@ -102,6 +102,14 @@ var createMiddleware = function createMiddleware() {
         }
     };
 
+    var send = function send(ws, payload, retries) {
+        if (ws.readyState === 1) ws.send(payload);else if (retries > 0) {
+            setTimeout(function () {
+                return undefined.send(ws, payload, retries - 1);
+            }, 500);
+        }
+    };
+
     /**
      * The primary Redux middleware function.
      * Each of the actions handled are user-dispatched.
@@ -128,7 +136,8 @@ var createMiddleware = function createMiddleware() {
                         var _message = JSON.stringify(action.payload);
                         for (var i = 0; i < websockets.length; i++) {
                             if (websockets[i].url === action.url) {
-                                websockets[i].send(_message);
+                                //websockets[i].send(message);
+                                send(websockets[i], _message, 2);
                                 next(action);
                                 return;
                             }
@@ -140,7 +149,8 @@ var createMiddleware = function createMiddleware() {
                     case WEBSOCKET_SEND_BINARY:
                         for (var _i = 0; _i < websockets.length; _i++) {
                             if (websockets[_i].url === action.url) {
-                                websockets[_i].send(action.payload);
+                                //websockets[i].send(action.payload);
+                                send(websockets[_i], action.payload, 2);
                                 next(action);
                                 return;
                             }

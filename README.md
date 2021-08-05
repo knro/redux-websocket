@@ -11,3 +11,7 @@ This is not desirable for binary objects, so this fork provides WEBSOCKET_SEND_T
 
 This fork also supports multiple websockets per middleware. The only requirement is to send url as part of the payload object in all action creators.
 
+## Build
+
+```npx babel-cli -d dist/ src/```
+

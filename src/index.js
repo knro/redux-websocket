@@ -98,6 +98,16 @@ const createMiddleware = () =>
         }
     };
 
+    const send = (ws, payload, retries) =>
+    {
+        if (ws.readyState === 1)
+            ws.send(payload);
+        else if (retries > 0)
+        {
+            setTimeout(() => send(ws, payload, retries - 1), 500);
+        }
+    }
+
     /**
      * The primary Redux middleware function.
      * Each of the actions handled are user-dispatched.
@@ -126,7 +136,8 @@ const createMiddleware = () =>
                 {
                     if (websockets[i].url === action.url)
                     {
-                        websockets[i].send(message);
+                        //websockets[i].send(message);
+                        send(websockets[i], message, 2);
                         next(action);
                         return;
                     }
@@ -141,7 +152,8 @@ const createMiddleware = () =>
                 {
                     if (websockets[i].url === action.url)
                     {
-                        websockets[i].send(action.payload);
+                        //websockets[i].send(action.payload);
+                        send(websockets[i], action.payload, 2);
                         next(action);
                         return;
                     }
