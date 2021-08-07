@@ -105,7 +105,7 @@ var createMiddleware = function createMiddleware() {
     var send = function send(ws, payload, retries) {
         if (ws.readyState === 1) ws.send(payload);else if (retries > 0) {
             setTimeout(function () {
-                return undefined.send(ws, payload, retries - 1);
+                return send(ws, payload, retries - 1);
             }, 500);
         }
     };
