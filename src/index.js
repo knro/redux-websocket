@@ -3,7 +3,7 @@
 import {compose} from 'redux';
 import partial from 'lodash/fp/partial';
 import partialRight from 'lodash/fp/partialRight';
-import {connecting, open, closed, message} from './actions';
+import {connecting, open, closed, error, message} from './actions';
 import {createWebsocket} from './websocket';
 
 // Action types to be dispatched by the user
@@ -14,6 +14,7 @@ export const WEBSOCKET_SEND_BINARY = 'WEBSOCKET:SEND_BINARY';
 // Action types dispatched by the WebSocket implementation
 export const WEBSOCKET_CONNECTING = 'WEBSOCKET:CONNECTING';
 export const WEBSOCKET_OPEN = 'WEBSOCKET:OPEN';
+export const WEBSOCKET_ERROR = 'WEBSOCKET:ERROR';
 export const WEBSOCKET_CLOSED = 'WEBSOCKET:CLOSED';
 export const WEBSOCKET_MESSAGE = 'WEBSOCKET:MESSAGE';
 
@@ -53,6 +54,12 @@ const createMiddleware = () =>
             if (event.code === 1006 && websocket.reconnects < MAX_RECONNECT_ATTEMPTS)
                 reconnect(websocket, dispatch, config);
 
+        };
+        // On socket error
+        websocket.onerror = (event) =>
+        {
+            dispatchAction(error)(event);
+            console.error("WebSocket error observed:", event);
         };
 
 

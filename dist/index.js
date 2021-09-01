@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.WEBSOCKET_MESSAGE = exports.WEBSOCKET_CLOSED = exports.WEBSOCKET_OPEN = exports.WEBSOCKET_CONNECTING = exports.WEBSOCKET_SEND_BINARY = exports.WEBSOCKET_SEND_TEXT = exports.WEBSOCKET_DISCONNECT = exports.WEBSOCKET_CONNECT = undefined;
+exports.WEBSOCKET_MESSAGE = exports.WEBSOCKET_CLOSED = exports.WEBSOCKET_ERROR = exports.WEBSOCKET_OPEN = exports.WEBSOCKET_CONNECTING = exports.WEBSOCKET_SEND_BINARY = exports.WEBSOCKET_SEND_TEXT = exports.WEBSOCKET_DISCONNECT = exports.WEBSOCKET_CONNECT = undefined;
 
 var _redux = require('redux');
 
@@ -30,6 +30,7 @@ var WEBSOCKET_SEND_BINARY = exports.WEBSOCKET_SEND_BINARY = 'WEBSOCKET:SEND_BINA
 // Action types dispatched by the WebSocket implementation
 var WEBSOCKET_CONNECTING = exports.WEBSOCKET_CONNECTING = 'WEBSOCKET:CONNECTING';
 var WEBSOCKET_OPEN = exports.WEBSOCKET_OPEN = 'WEBSOCKET:OPEN';
+var WEBSOCKET_ERROR = exports.WEBSOCKET_ERROR = 'WEBSOCKET:ERROR';
 var WEBSOCKET_CLOSED = exports.WEBSOCKET_CLOSED = 'WEBSOCKET:CLOSED';
 var WEBSOCKET_MESSAGE = exports.WEBSOCKET_MESSAGE = 'WEBSOCKET:MESSAGE';
 
@@ -65,6 +66,11 @@ var createMiddleware = function createMiddleware() {
         websocket.onclose = function (event) {
             dispatchAction(_actions.closed)(event);
             if (event.code === 1006 && websocket.reconnects < MAX_RECONNECT_ATTEMPTS) reconnect(websocket, dispatch, config);
+        };
+        // On socket error
+        websocket.onerror = function (event) {
+            dispatchAction(_actions.error)(event);
+            console.error("WebSocket error observed:", event);
         };
 
         // An optimistic callback assignment for WebSocket objects that support this

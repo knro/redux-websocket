@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.message = exports.closed = exports.open = exports.connecting = undefined;
+exports.message = exports.error = exports.closed = exports.open = exports.connecting = undefined;
 
 var _index = require('./index');
 
@@ -34,6 +34,16 @@ var open = exports.open = function open(event) {
 var closed = exports.closed = function closed(event) {
   return {
     type: _index.WEBSOCKET_CLOSED,
+    payload: {
+      timestamp: new Date(),
+      event: event
+    }
+  };
+};
+
+var error = exports.error = function error(event) {
+  return {
+    type: _index.WEBSOCKET_ERROR,
     payload: {
       timestamp: new Date(),
       event: event
