@@ -13,5 +13,5 @@ This fork also supports multiple websockets per middleware. The only requirement
 
 ## Build
 
-```npx babel-cli -d dist/ src/```
+```babel -d dist/ src/```
 
