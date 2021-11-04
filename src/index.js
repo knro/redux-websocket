@@ -52,10 +52,8 @@ const createMiddleware = () =>
         {
             dispatchAction(closed)(event);
 
-            if ( (event.code === 1006 || (event.message && event.message.startsWith("Software")))
-                && websocket.reconnects < MAX_RECONNECT_ATTEMPTS)
+            if ( ((event.code && event.code > 1000) || event.message) && websocket.reconnects < MAX_RECONNECT_ATTEMPTS)
                 reconnect(websocket, dispatch, config);
-
         };
         // On socket error
         websocket.onerror = (event) =>
