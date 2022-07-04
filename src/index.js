@@ -73,18 +73,13 @@ const createMiddleware = () =>
 
     const reconnect = (websocket, dispatch, config) =>
     {
-        let timeout = 5000 + websocket.reconnects * 250;
+        const timeout = 5000 + websocket.reconnects * 250;
         websocket.reconnects++;
         // If abnormal close, try to reconnect
         setTimeout(function ()
         {
             console.log("Reconnecting websocket to " + websocket.url);
-            // Remove from list
-            for (let i = 0; i < websockets.length; i++)
-            {
-                if (websockets[i].url === websocket.url)
-                    websockets.splice(i, 1);
-            }
+            websockets = websockets.filter(oneWS => oneWS.url !== websocket.url);
             initialize({dispatch}, config);
         }, timeout);
     };
@@ -94,15 +89,18 @@ const createMiddleware = () =>
      */
     const close = (url) =>
     {
-        for (let i = 0; i < websockets.length; i++)
+        // Close matching sockets
+        for (oneWS of websockets)
         {
-            if (websockets[i].url === url)
+            if (oneWS.url === url)
             {
-                console.log(`Closing WebSocket connection to ${websockets[i].url} ...`);
-                websockets[i].close();
-                websockets.splice(i, 1);
+                console.log(`Closing WebSocket connection to ${oneWS.url} ...`);
+                oneWS.close();
             }
         }
+
+        // Next remove them from array
+        websockets = websockets.filter(oneWS => oneWS.url !== url);
     };
 
     const send = (ws, payload, retries) =>
@@ -139,12 +137,12 @@ const createMiddleware = () =>
             // User request to send a text message
             case WEBSOCKET_SEND_TEXT:
                 const message = JSON.stringify(action.payload);
-                for (let i = 0; i < websockets.length; i++)
+                for (oneWS of websockets)
                 {
-                    if (websockets[i].url === action.url)
+                    if (oneWS.url === action.url)
                     {
                         //websockets[i].send(message);
-                        send(websockets[i], message, 2);
+                        send(oneWS, message, 2);
                         next(action);
                         return;
                     }
@@ -155,12 +153,11 @@ const createMiddleware = () =>
 
             // User request to send a text message
             case WEBSOCKET_SEND_BINARY:
-                for (let i = 0; i < websockets.length; i++)
+                for (oneWS of websockets)
                 {
-                    if (websockets[i].url === action.url)
+                    if (oneWS === action.url)
                     {
-                        //websockets[i].send(action.payload);
-                        send(websockets[i], action.payload, 2);
+                        send(oneWS, action.payload, 2);
                         next(action);
                         return;
                     }
