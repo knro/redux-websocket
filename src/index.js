@@ -52,6 +52,10 @@ const createMiddleware = () =>
         {
             dispatchAction(closed)(event);
 
+            // If our website was removed from list, do not attempt to reconnect
+            if (!websockets.includes(websocket))
+                return;
+
             if ( ((event.code && event.code > 1000) || event.message) && websocket.reconnects < MAX_RECONNECT_ATTEMPTS)
                 reconnect(websocket, dispatch, config);
         };
@@ -61,7 +65,6 @@ const createMiddleware = () =>
             dispatchAction(error)(event);
             console.error("WebSocket error observed:", event);
         };
-
 
         // An optimistic callback assignment for WebSocket objects that support this
         const onConnecting = dispatchAction(connecting);

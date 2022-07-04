@@ -66,6 +66,9 @@ var createMiddleware = function createMiddleware() {
         websocket.onclose = function (event) {
             dispatchAction(_actions.closed)(event);
 
+            // If our website was removed from list, do not attempt to reconnect
+            if (!websockets.includes(websocket)) return;
+
             if ((event.code && event.code > 1000 || event.message) && websocket.reconnects < MAX_RECONNECT_ATTEMPTS) reconnect(websocket, dispatch, config);
         };
         // On socket error
@@ -101,7 +104,6 @@ var createMiddleware = function createMiddleware() {
      */
     var close = function close(url) {
         if (url === null || url === undefined) return;
-
         var host = url.split("&token")[0];
         // Close matching sockets
         var _iteratorNormalCompletion = true;
