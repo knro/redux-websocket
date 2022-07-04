@@ -100,6 +100,8 @@ var createMiddleware = function createMiddleware() {
      * Close the WebSocket connection and cleanup
      */
     var close = function close(url) {
+        if (url === null || url === undefined) return;
+
         var host = url.split("&token")[0];
         // Close matching sockets
         var _iteratorNormalCompletion = true;

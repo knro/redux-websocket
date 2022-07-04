@@ -90,6 +90,8 @@ const createMiddleware = () =>
      */
     const close = (url) =>
     {
+        if (url === null || url === undefined)
+            return;
         const host = url.split("&token")[0];
         // Close matching sockets
         for (const oneWS of websockets)
