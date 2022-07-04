@@ -79,7 +79,8 @@ const createMiddleware = () =>
         setTimeout(function ()
         {
             console.log("Reconnecting websocket to " + websocket.url);
-            websockets = websockets.filter(oneWS => oneWS.url !== websocket.url);
+            const host = websocket.url.split("&token")[0];
+            websockets = websockets.filter(oneWS => !oneWS.url.startsWith(host));
             initialize({dispatch}, config);
         }, timeout);
     };
@@ -89,10 +90,11 @@ const createMiddleware = () =>
      */
     const close = (url) =>
     {
+        const host = url.split("&token")[0];
         // Close matching sockets
         for (const oneWS of websockets)
         {
-            if (oneWS.url === url)
+            if (oneWS.url.startsWith(host))
             {
                 console.log(`Closing WebSocket connection to ${oneWS.url} ...`);
                 oneWS.close();
@@ -100,7 +102,7 @@ const createMiddleware = () =>
         }
 
         // Next remove them from array
-        websockets = websockets.filter(oneWS => oneWS.url !== url);
+        websockets = websockets.filter(oneWS => !oneWS.url.startsWith(host));
     };
 
     const send = (ws, payload, retries) =>

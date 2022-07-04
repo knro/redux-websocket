@@ -88,8 +88,9 @@ var createMiddleware = function createMiddleware() {
         // If abnormal close, try to reconnect
         setTimeout(function () {
             console.log("Reconnecting websocket to " + websocket.url);
+            var host = websocket.url.split("&token")[0];
             websockets = websockets.filter(function (oneWS) {
-                return oneWS.url !== websocket.url;
+                return !oneWS.url.startsWith(host);
             });
             initialize({ dispatch: dispatch }, config);
         }, timeout);
@@ -99,6 +100,7 @@ var createMiddleware = function createMiddleware() {
      * Close the WebSocket connection and cleanup
      */
     var close = function close(url) {
+        var host = url.split("&token")[0];
         // Close matching sockets
         var _iteratorNormalCompletion = true;
         var _didIteratorError = false;
@@ -108,7 +110,7 @@ var createMiddleware = function createMiddleware() {
             for (var _iterator = websockets[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
                 var oneWS = _step.value;
 
-                if (oneWS.url === url) {
+                if (oneWS.url.startsWith(host)) {
                     console.log('Closing WebSocket connection to ' + oneWS.url + ' ...');
                     oneWS.close();
                 }
@@ -131,7 +133,7 @@ var createMiddleware = function createMiddleware() {
         }
 
         websockets = websockets.filter(function (oneWS) {
-            return oneWS.url !== url;
+            return !oneWS.url.startsWith(host);
         });
     };
 
