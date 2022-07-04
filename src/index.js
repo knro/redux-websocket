@@ -90,7 +90,7 @@ const createMiddleware = () =>
     const close = (url) =>
     {
         // Close matching sockets
-        for (oneWS of websockets)
+        for (const oneWS of websockets)
         {
             if (oneWS.url === url)
             {
@@ -137,7 +137,7 @@ const createMiddleware = () =>
             // User request to send a text message
             case WEBSOCKET_SEND_TEXT:
                 const message = JSON.stringify(action.payload);
-                for (oneWS of websockets)
+                for (const oneWS of websockets)
                 {
                     if (oneWS.url === action.url)
                     {
@@ -153,7 +153,7 @@ const createMiddleware = () =>
 
             // User request to send a text message
             case WEBSOCKET_SEND_BINARY:
-                for (oneWS of websockets)
+                for (const oneWS of websockets)
                 {
                     if (oneWS === action.url)
                     {

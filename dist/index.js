@@ -106,7 +106,7 @@ var createMiddleware = function createMiddleware() {
 
         try {
             for (var _iterator = websockets[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-                oneWS = _step.value;
+                var oneWS = _step.value;
 
                 if (oneWS.url === url) {
                     console.log('Closing WebSocket connection to ' + oneWS.url + ' ...');
@@ -173,7 +173,7 @@ var createMiddleware = function createMiddleware() {
 
                         try {
                             for (var _iterator2 = websockets[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                                oneWS = _step2.value;
+                                var oneWS = _step2.value;
 
                                 if (oneWS.url === action.url) {
                                     //websockets[i].send(message);
@@ -208,10 +208,10 @@ var createMiddleware = function createMiddleware() {
 
                         try {
                             for (var _iterator3 = websockets[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-                                oneWS = _step3.value;
+                                var _oneWS = _step3.value;
 
-                                if (oneWS === action.url) {
-                                    send(oneWS, action.payload, 2);
+                                if (_oneWS === action.url) {
+                                    send(_oneWS, action.payload, 2);
                                     next(action);
                                     return;
                                 }
