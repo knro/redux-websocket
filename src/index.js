@@ -162,7 +162,7 @@ const createMiddleware = () =>
             case WEBSOCKET_SEND_BINARY:
                 for (const oneWS of websockets)
                 {
-                    if (oneWS === action.url)
+                    if (oneWS.url === action.url)
                     {
                         send(oneWS, action.payload, 2);
                         next(action);

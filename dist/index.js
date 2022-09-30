@@ -216,7 +216,7 @@ var createMiddleware = function createMiddleware() {
                             for (var _iterator3 = websockets[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
                                 var _oneWS = _step3.value;
 
-                                if (_oneWS === action.url) {
+                                if (_oneWS.url === action.url) {
                                     send(_oneWS, action.payload, 2);
                                     next(action);
                                     return;
