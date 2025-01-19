@@ -57,11 +57,28 @@ const createMiddleware = () => {
       const host = websocket.url.split("&token")[0];
       const currentCount = reconnectCounts.get(host) || 0;
 
-      if (
-        ((event.code && event.code > 1000) || event.message) &&
-        currentCount < MAX_RECONNECT_ATTEMPTS
-      ) {
-        reconnect(websocket, dispatch, config);
+      if ((event.code && event.code > 1000) || event.message) {
+        console.log(
+          `WebSocket closed abnormally for ${websocket.url}:`,
+          `\n- Code: ${event.code || "none"}`,
+          `\n- Reason: ${event.reason || "none"}`,
+          `\n- Message: ${event.message || "none"}`,
+          `\n- Current reconnection attempts: ${currentCount}`
+        );
+
+        if (currentCount < MAX_RECONNECT_ATTEMPTS) {
+          reconnect(websocket, dispatch, config);
+        } else {
+          console.warn(
+            `Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached for ${host}. Giving up.`
+          );
+        }
+      } else {
+        console.log(
+          `WebSocket closed normally for ${websocket.url}`,
+          `\n- Code: ${event.code || "none"}`,
+          `\n- Reason: ${event.reason || "none"}`
+        );
       }
     };
     // On socket error
@@ -99,6 +116,14 @@ const createMiddleware = () => {
     // Add some random jitter to prevent thundering herd
     const jitteredDelay = delay * (0.5 + Math.random());
 
+    console.log(
+      `Scheduling reconnection attempt ${
+        currentCount + 1
+      }/${MAX_RECONNECT_ATTEMPTS} for ${websocket.url}:`,
+      `\n- Base delay: ${delay}ms`,
+      `\n- With jitter: ${jitteredDelay}ms`
+    );
+
     // Clear any existing timeout for this host
     if (reconnectTimeouts.has(host)) {
       clearTimeout(reconnectTimeouts.get(host));
@@ -106,7 +131,11 @@ const createMiddleware = () => {
 
     // Store new timeout
     const timeoutId = setTimeout(function () {
-      console.log("Reconnecting websocket to " + websocket.url);
+      console.log(
+        `Attempting reconnection ${
+          currentCount + 1
+        }/${MAX_RECONNECT_ATTEMPTS} to ${websocket.url}`
+      );
       // Only remove the specific websocket that's reconnecting
       websockets = websockets.filter((oneWS) => oneWS !== websocket);
       reconnectTimeouts.delete(host);
