@@ -59,7 +59,11 @@ var createMiddleware = function createMiddleware() {
     if (websocket.url === undefined) websocket.url = config.url;
 
     // Function will dispatch actions returned from action creators.
-    var dispatchAction = (0, _partial2.default)(_redux.compose, [dispatch]);
+    var dispatchAction = function dispatchAction(actionCreator) {
+      return function (event) {
+        dispatch(actionCreator(event));
+      };
+    };
 
     // On Opening socket
     websocket.onopen = dispatchAction(_actions.open);
@@ -67,7 +71,7 @@ var createMiddleware = function createMiddleware() {
     websocket.onmessage = dispatchAction(_actions.message);
     // On Closing socket
     websocket.onclose = function (event) {
-      dispatchAction(_actions.closed)(event);
+      dispatch((0, _actions.closed)(event));
 
       // If our website was removed from list, do not attempt to reconnect
       if (!websockets.includes(websocket)) return;
@@ -89,14 +93,14 @@ var createMiddleware = function createMiddleware() {
     };
     // On socket error
     websocket.onerror = function (event) {
-      dispatchAction(_actions.error)(event);
+      dispatch((0, _actions.error)(event));
       console.error("WebSocket error observed:", event);
     };
 
     // An optimistic callback assignment for WebSocket objects that support this
-    var onConnecting = dispatchAction(_actions.connecting);
-    // Add the websocket as the 2nd argument (after the event).
-    websocket.onconnecting = (0, _partialRight2.default)(onConnecting, [websocket]);
+    websocket.onconnecting = function (event) {
+      dispatch((0, _actions.connecting)(event, websocket));
+    };
 
     websockets.push(websocket);
   };

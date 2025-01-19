@@ -41,7 +41,9 @@ const createMiddleware = () => {
     if (websocket.url === undefined) websocket.url = config.url;
 
     // Function will dispatch actions returned from action creators.
-    const dispatchAction = partial(compose, [dispatch]);
+    const dispatchAction = (actionCreator) => (event) => {
+      dispatch(actionCreator(event));
+    };
 
     // On Opening socket
     websocket.onopen = dispatchAction(open);
@@ -49,7 +51,7 @@ const createMiddleware = () => {
     websocket.onmessage = dispatchAction(message);
     // On Closing socket
     websocket.onclose = (event) => {
-      dispatchAction(closed)(event);
+      dispatch(closed(event));
 
       // If our website was removed from list, do not attempt to reconnect
       if (!websockets.includes(websocket)) return;
@@ -83,14 +85,14 @@ const createMiddleware = () => {
     };
     // On socket error
     websocket.onerror = (event) => {
-      dispatchAction(error)(event);
+      dispatch(error(event));
       console.error("WebSocket error observed:", event);
     };
 
     // An optimistic callback assignment for WebSocket objects that support this
-    const onConnecting = dispatchAction(connecting);
-    // Add the websocket as the 2nd argument (after the event).
-    websocket.onconnecting = partialRight(onConnecting, [websocket]);
+    websocket.onconnecting = (event) => {
+      dispatch(connecting(event, websocket));
+    };
 
     websockets.push(websocket);
   };
