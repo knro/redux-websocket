@@ -76,17 +76,28 @@ var createMiddleware = function createMiddleware() {
       // If our website was removed from list, do not attempt to reconnect
       if (!websockets.includes(websocket)) return;
 
+      // Check if we have any active connection to any host
+      var hasAnyActiveConnection = websockets.some(function (ws) {
+        return ws !== websocket && ws.readyState === 1;
+      });
+
+      if (hasAnyActiveConnection) {
+        console.log("Already have an active connection to a different host. Not attempting reconnection to " + websocket.url);
+        return;
+      }
+
       var host = websocket.url.split("&token")[0];
       var currentCount = reconnectCounts.get(host) || 0;
 
       if (event.code && event.code > 1000 || event.message) {
         console.log("WebSocket closed abnormally for " + websocket.url + ":", "\n- Code: " + (event.code || "none"), "\n- Reason: " + (event.reason || "none"), "\n- Message: " + (event.message || "none"), "\n- Current reconnection attempts: " + currentCount);
 
-        if (currentCount < MAX_RECONNECT_ATTEMPTS) {
-          reconnect(websocket, dispatch, config);
-        } else {
+        if (currentCount >= MAX_RECONNECT_ATTEMPTS) {
           console.warn("Maximum reconnection attempts (" + MAX_RECONNECT_ATTEMPTS + ") reached for " + host + ". Giving up.");
+          return;
         }
+
+        reconnect(websocket, dispatch, config);
       } else {
         console.log("WebSocket closed normally for " + websocket.url, "\n- Code: " + (event.code || "none"), "\n- Reason: " + (event.reason || "none"));
       }
@@ -108,13 +119,24 @@ var createMiddleware = function createMiddleware() {
   var reconnect = function reconnect(websocket, dispatch, config) {
     var host = websocket.url.split("&token")[0];
     var currentCount = reconnectCounts.get(host) || 0;
+    var nextCount = currentCount + 1;
 
-    if (currentCount >= MAX_RECONNECT_ATTEMPTS) {
+    // Check if next attempt would exceed max attempts
+    if (nextCount > MAX_RECONNECT_ATTEMPTS) {
       console.warn("Maximum reconnection attempts (" + MAX_RECONNECT_ATTEMPTS + ") reached for " + host);
       return;
     }
 
-    reconnectCounts.set(host, currentCount + 1);
+    // Double check for any active connections again for safety
+    var hasAnyActiveConnection = websockets.some(function (ws) {
+      return ws !== websocket && ws.readyState === 1;
+    });
+    if (hasAnyActiveConnection) {
+      console.log("Already have an active connection to a different host. Not attempting reconnection to " + websocket.url);
+      return;
+    }
+
+    reconnectCounts.set(host, nextCount);
 
     // Calculate delay with exponential backoff and jitter
     var delay = Math.min(INITIAL_RECONNECT_DELAY * Math.pow(2, currentCount), MAX_RECONNECT_DELAY);
