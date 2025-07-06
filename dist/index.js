@@ -3,30 +3,19 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.WEBSOCKET_MESSAGE = exports.WEBSOCKET_CLOSED = exports.WEBSOCKET_ERROR = exports.WEBSOCKET_OPEN = exports.WEBSOCKET_CONNECTING = exports.WEBSOCKET_SEND_BINARY = exports.WEBSOCKET_SEND_TEXT = exports.WEBSOCKET_DISCONNECT = exports.WEBSOCKET_CONNECT = undefined;
-
-var _redux = require("redux");
-
-var _partial = require("lodash/fp/partial");
-
-var _partial2 = _interopRequireDefault(_partial);
-
-var _partialRight = require("lodash/fp/partialRight");
-
-var _partialRight2 = _interopRequireDefault(_partialRight);
+exports.WEBSOCKET_MESSAGE = exports.WEBSOCKET_CLOSED = exports.WEBSOCKET_ERROR = exports.WEBSOCKET_OPEN = exports.WEBSOCKET_CONNECTING = exports.WEBSOCKET_SIMULATE_ERROR = exports.WEBSOCKET_SEND_BINARY = exports.WEBSOCKET_SEND_TEXT = exports.WEBSOCKET_DISCONNECT = exports.WEBSOCKET_CONNECT = undefined;
 
 var _actions = require("./actions");
 
 var _websocket = require("./websocket");
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
 // Action types to be dispatched by the user
-var WEBSOCKET_CONNECT = exports.WEBSOCKET_CONNECT = "WEBSOCKET:CONNECT"; /* eslint-env browser */
-
+/* eslint-env browser */
+var WEBSOCKET_CONNECT = exports.WEBSOCKET_CONNECT = "WEBSOCKET:CONNECT";
 var WEBSOCKET_DISCONNECT = exports.WEBSOCKET_DISCONNECT = "WEBSOCKET:DISCONNECT";
 var WEBSOCKET_SEND_TEXT = exports.WEBSOCKET_SEND_TEXT = "WEBSOCKET:SEND_TEXT";
 var WEBSOCKET_SEND_BINARY = exports.WEBSOCKET_SEND_BINARY = "WEBSOCKET:SEND_BINARY";
+var WEBSOCKET_SIMULATE_ERROR = exports.WEBSOCKET_SIMULATE_ERROR = "WEBSOCKET:SIMULATE_ERROR";
 // Action types dispatched by the WebSocket implementation
 var WEBSOCKET_CONNECTING = exports.WEBSOCKET_CONNECTING = "WEBSOCKET:CONNECTING";
 var WEBSOCKET_OPEN = exports.WEBSOCKET_OPEN = "WEBSOCKET:OPEN";
@@ -45,6 +34,13 @@ var createMiddleware = function createMiddleware() {
   // Keep track of reconnection timeouts and counts
   var reconnectTimeouts = new Map();
   var reconnectCounts = new Map();
+
+  var getPurposeFromUrl = function getPurposeFromUrl(url) {
+    if (!url) return "";
+    // Extracts the path from a WebSocket URL, e.g., /media/user from ws://...
+    var match = url.match(/^wss?:\/\/[^/]+(\/[^?]*)/);
+    return match ? match[1] : "";
+  };
 
   /**
    * A function to create the WebSocket object and attach the standard callbacks
@@ -76,13 +72,15 @@ var createMiddleware = function createMiddleware() {
       // If our website was removed from list, do not attempt to reconnect
       if (!websockets.includes(websocket)) return;
 
-      // Check if we have any active connection to any host
-      var hasAnyActiveConnection = websockets.some(function (ws) {
-        return ws !== websocket && ws.readyState === 1;
+      // Check if we have an active connection for the same purpose (e.g. message or media).
+      // This allows different services to reconnect independently.
+      var purpose = getPurposeFromUrl(websocket.url);
+      var hasActiveConnectionForSamePurpose = websockets.some(function (ws) {
+        return ws !== websocket && getPurposeFromUrl(ws.url) === purpose && ws.readyState === 1;
       });
 
-      if (hasAnyActiveConnection) {
-        console.log("Already have an active connection to a different host. Not attempting reconnection to " + websocket.url);
+      if (hasActiveConnectionForSamePurpose) {
+        console.log("Another active connection for " + purpose + " exists. Not attempting reconnection to " + websocket.url);
         return;
       }
 
@@ -100,6 +98,9 @@ var createMiddleware = function createMiddleware() {
         reconnect(websocket, dispatch, config);
       } else {
         console.log("WebSocket closed normally for " + websocket.url, "\n- Code: " + (event.code || "none"), "\n- Reason: " + (event.reason || "none"));
+        websockets = websockets.filter(function (ws) {
+          return ws !== websocket;
+        });
       }
     };
     // On socket error
@@ -127,12 +128,13 @@ var createMiddleware = function createMiddleware() {
       return;
     }
 
-    // Double check for any active connections again for safety
-    var hasAnyActiveConnection = websockets.some(function (ws) {
-      return ws !== websocket && ws.readyState === 1;
+    // Double check for any active connections for the same purpose again for safety
+    var purpose = getPurposeFromUrl(websocket.url);
+    var hasActiveConnectionForSamePurpose = websockets.some(function (ws) {
+      return ws !== websocket && getPurposeFromUrl(ws.url) === purpose && ws.readyState === 1;
     });
-    if (hasAnyActiveConnection) {
-      console.log("Already have an active connection to a different host. Not attempting reconnection to " + websocket.url);
+    if (hasActiveConnectionForSamePurpose) {
+      console.log("Another active connection for " + purpose + " exists. Not attempting reconnection to " + websocket.url);
       return;
     }
 
@@ -196,6 +198,7 @@ var createMiddleware = function createMiddleware() {
       }
 
       // Next remove them from array
+      // websockets = websockets.filter((oneWS) => !oneWS.url.startsWith(host));
     } catch (err) {
       _didIteratorError = true;
       _iteratorError = err;
@@ -210,10 +213,6 @@ var createMiddleware = function createMiddleware() {
         }
       }
     }
-
-    websockets = websockets.filter(function (oneWS) {
-      return !oneWS.url.startsWith(host);
-    });
   };
 
   var send = function send(ws, payload, retries) {
@@ -313,6 +312,40 @@ var createMiddleware = function createMiddleware() {
             }
 
             console.warn("WebSocket is closed, ignoring binary message. Trigger a WEBSOCKET_CONNECT first.");
+            break;
+
+          // User request to simulate an error
+          case WEBSOCKET_SIMULATE_ERROR:
+            var _iteratorNormalCompletion4 = true;
+            var _didIteratorError4 = false;
+            var _iteratorError4 = undefined;
+
+            try {
+              for (var _iterator4 = websockets[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+                var _oneWS2 = _step4.value;
+
+                if (_oneWS2.url === action.url) {
+                  console.log("Simulating WebSocket error for " + _oneWS2.url);
+                  _oneWS2.close(4000, "Simulated error for testing.");
+                  break;
+                }
+              }
+            } catch (err) {
+              _didIteratorError4 = true;
+              _iteratorError4 = err;
+            } finally {
+              try {
+                if (!_iteratorNormalCompletion4 && _iterator4.return) {
+                  _iterator4.return();
+                }
+              } finally {
+                if (_didIteratorError4) {
+                  throw _iteratorError4;
+                }
+              }
+            }
+
+            next(action);
             break;
 
           default:

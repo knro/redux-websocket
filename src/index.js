@@ -1,8 +1,5 @@
 /* eslint-env browser */
 /* @flow */
-import { compose } from "redux";
-import partial from "lodash/fp/partial";
-import partialRight from "lodash/fp/partialRight";
 import { connecting, open, closed, error, message } from "./actions";
 import { createWebsocket } from "./websocket";
 
@@ -11,6 +8,7 @@ export const WEBSOCKET_CONNECT = "WEBSOCKET:CONNECT";
 export const WEBSOCKET_DISCONNECT = "WEBSOCKET:DISCONNECT";
 export const WEBSOCKET_SEND_TEXT = "WEBSOCKET:SEND_TEXT";
 export const WEBSOCKET_SEND_BINARY = "WEBSOCKET:SEND_BINARY";
+export const WEBSOCKET_SIMULATE_ERROR = "WEBSOCKET:SIMULATE_ERROR";
 // Action types dispatched by the WebSocket implementation
 export const WEBSOCKET_CONNECTING = "WEBSOCKET:CONNECTING";
 export const WEBSOCKET_OPEN = "WEBSOCKET:OPEN";
@@ -30,10 +28,17 @@ const createMiddleware = () => {
   let reconnectTimeouts = new Map();
   let reconnectCounts = new Map();
 
+  const getPurposeFromUrl = (url) => {
+    if (!url) return "";
+    // Extracts the path from a WebSocket URL, e.g., /media/user from ws://...
+    const match = url.match(/^wss?:\/\/[^/]+(\/[^?]*)/);
+    return match ? match[1] : "";
+  };
+
   /**
    * A function to create the WebSocket object and attach the standard callbacks
    */
-  const initialize = ({ dispatch }, config: Config) => {
+  const initialize = ({ dispatch }, config) => {
     // Instantiate the websocket.
     const websocket = createWebsocket(config);
     // Web browsers define URL
@@ -56,14 +61,19 @@ const createMiddleware = () => {
       // If our website was removed from list, do not attempt to reconnect
       if (!websockets.includes(websocket)) return;
 
-      // Check if we have any active connection to any host
-      const hasAnyActiveConnection = websockets.some(
-        (ws) => ws !== websocket && ws.readyState === 1
+      // Check if we have an active connection for the same purpose (e.g. message or media).
+      // This allows different services to reconnect independently.
+      const purpose = getPurposeFromUrl(websocket.url);
+      const hasActiveConnectionForSamePurpose = websockets.some(
+        (ws) =>
+          ws !== websocket &&
+          getPurposeFromUrl(ws.url) === purpose &&
+          ws.readyState === 1
       );
 
-      if (hasAnyActiveConnection) {
+      if (hasActiveConnectionForSamePurpose) {
         console.log(
-          `Already have an active connection to a different host. Not attempting reconnection to ${websocket.url}`
+          `Another active connection for ${purpose} exists. Not attempting reconnection to ${websocket.url}`
         );
         return;
       }
@@ -94,6 +104,7 @@ const createMiddleware = () => {
           `\n- Code: ${event.code || "none"}`,
           `\n- Reason: ${event.reason || "none"}`
         );
+        websockets = websockets.filter((ws) => ws !== websocket);
       }
     };
     // On socket error
@@ -123,13 +134,17 @@ const createMiddleware = () => {
       return;
     }
 
-    // Double check for any active connections again for safety
-    const hasAnyActiveConnection = websockets.some(
-      (ws) => ws !== websocket && ws.readyState === 1
+    // Double check for any active connections for the same purpose again for safety
+    const purpose = getPurposeFromUrl(websocket.url);
+    const hasActiveConnectionForSamePurpose = websockets.some(
+      (ws) =>
+        ws !== websocket &&
+        getPurposeFromUrl(ws.url) === purpose &&
+        ws.readyState === 1
     );
-    if (hasAnyActiveConnection) {
+    if (hasActiveConnectionForSamePurpose) {
       console.log(
-        `Already have an active connection to a different host. Not attempting reconnection to ${websocket.url}`
+        `Another active connection for ${purpose} exists. Not attempting reconnection to ${websocket.url}`
       );
       return;
     }
@@ -198,7 +213,7 @@ const createMiddleware = () => {
     }
 
     // Next remove them from array
-    websockets = websockets.filter((oneWS) => !oneWS.url.startsWith(host));
+    // websockets = websockets.filter((oneWS) => !oneWS.url.startsWith(host));
   };
 
   const send = (ws, payload, retries) => {
@@ -212,7 +227,7 @@ const createMiddleware = () => {
    * The primary Redux middleware function.
    * Each of the actions handled are user-dispatched.
    */
-  return (store: Object) => (next: Function) => (action: Action) => {
+  return (store) => (next) => (action) => {
     switch (action.type) {
       // User request to connect
       case WEBSOCKET_CONNECT:
@@ -256,6 +271,18 @@ const createMiddleware = () => {
         console.warn(
           "WebSocket is closed, ignoring binary message. Trigger a WEBSOCKET_CONNECT first."
         );
+        break;
+
+      // User request to simulate an error
+      case WEBSOCKET_SIMULATE_ERROR:
+        for (const oneWS of websockets) {
+          if (oneWS.url === action.url) {
+            console.log(`Simulating WebSocket error for ${oneWS.url}`);
+            oneWS.close(4000, "Simulated error for testing.");
+            break;
+          }
+        }
+        next(action);
         break;
 
       default:
