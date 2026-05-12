@@ -81,6 +81,11 @@ var createMiddleware = function createMiddleware() {
 
       if (hasActiveConnectionForSamePurpose) {
         console.log("Another active connection for " + purpose + " exists. Not attempting reconnection to " + websocket.url);
+        // Remove the now-dead socket from the array so it never blocks a live
+        // socket with the same URL in the WEBSOCKET_SEND_TEXT / SEND_BINARY loops.
+        websockets = websockets.filter(function (ws) {
+          return ws !== websocket;
+        });
         return;
       }
 
@@ -197,8 +202,12 @@ var createMiddleware = function createMiddleware() {
         }
       }
 
-      // Next remove them from array
-      // websockets = websockets.filter((oneWS) => !oneWS.url.startsWith(host));
+      // Remove closed sockets from the array immediately.
+      // This is safe because close() is only called on intentional reconnect/disconnect
+      // (WEBSOCKET_CONNECT / WEBSOCKET_DISCONNECT), never spontaneously.
+      // When onclose fires for any of these sockets it will find them absent from
+      // the array (!websockets.includes(websocket) === true) and return early,
+      // so no spurious auto-reconnect is triggered.
     } catch (err) {
       _didIteratorError = true;
       _iteratorError = err;
@@ -213,6 +222,10 @@ var createMiddleware = function createMiddleware() {
         }
       }
     }
+
+    websockets = websockets.filter(function (oneWS) {
+      return !oneWS.url.startsWith(host);
+    });
   };
 
   var send = function send(ws, payload, retries) {
@@ -255,7 +268,10 @@ var createMiddleware = function createMiddleware() {
               for (var _iterator2 = websockets[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
                 var oneWS = _step2.value;
 
-                if (oneWS.url === action.url) {
+                // Only consider sockets that are actually open (readyState === 1).
+                // Closed/closing sockets may still be in the array (e.g. stale entries
+                // from a previous session) and must not block the live socket.
+                if (oneWS.url === action.url && oneWS.readyState === 1) {
                   //websockets[i].send(message);
                   send(oneWS, _message, 2);
                   next(action);
@@ -290,7 +306,8 @@ var createMiddleware = function createMiddleware() {
               for (var _iterator3 = websockets[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
                 var _oneWS = _step3.value;
 
-                if (_oneWS.url === action.url) {
+                // Same readyState guard as WEBSOCKET_SEND_TEXT: skip dead sockets.
+                if (_oneWS.url === action.url && _oneWS.readyState === 1) {
                   send(_oneWS, action.payload, 2);
                   next(action);
                   return;

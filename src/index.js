@@ -20,7 +20,8 @@ const MAX_RECONNECT_ATTEMPTS = 10;
 const INITIAL_RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_DELAY = 30000;
 
-const createMiddleware = () => {
+const createMiddleware = () =>
+{
   // Hold a reference to the WebSocket instance in use.
   //let websocket: ?WebSocket;
   let websockets = [];
@@ -28,7 +29,8 @@ const createMiddleware = () => {
   let reconnectTimeouts = new Map();
   let reconnectCounts = new Map();
 
-  const getPurposeFromUrl = (url) => {
+  const getPurposeFromUrl = (url) =>
+  {
     if (!url) return "";
     // Extracts the path from a WebSocket URL, e.g., /media/user from ws://...
     const match = url.match(/^wss?:\/\/[^/]+(\/[^?]*)/);
@@ -38,7 +40,8 @@ const createMiddleware = () => {
   /**
    * A function to create the WebSocket object and attach the standard callbacks
    */
-  const initialize = ({ dispatch }, config) => {
+  const initialize = ({ dispatch }, config) =>
+  {
     // Instantiate the websocket.
     const websocket = createWebsocket(config);
     // Web browsers define URL
@@ -46,7 +49,8 @@ const createMiddleware = () => {
     if (websocket.url === undefined) websocket.url = config.url;
 
     // Function will dispatch actions returned from action creators.
-    const dispatchAction = (actionCreator) => (event) => {
+    const dispatchAction = (actionCreator) => (event) =>
+    {
       dispatch(actionCreator(event));
     };
 
@@ -55,7 +59,8 @@ const createMiddleware = () => {
     // On receiving message
     websocket.onmessage = dispatchAction(message);
     // On Closing socket
-    websocket.onclose = (event) => {
+    websocket.onclose = (event) =>
+    {
       dispatch(closed(event));
 
       // If our website was removed from list, do not attempt to reconnect
@@ -71,17 +76,22 @@ const createMiddleware = () => {
           ws.readyState === 1
       );
 
-      if (hasActiveConnectionForSamePurpose) {
+      if (hasActiveConnectionForSamePurpose)
+      {
         console.log(
           `Another active connection for ${purpose} exists. Not attempting reconnection to ${websocket.url}`
         );
+        // Remove the now-dead socket from the array so it never blocks a live
+        // socket with the same URL in the WEBSOCKET_SEND_TEXT / SEND_BINARY loops.
+        websockets = websockets.filter((ws) => ws !== websocket);
         return;
       }
 
       const host = websocket.url.split("&token")[0];
       const currentCount = reconnectCounts.get(host) || 0;
 
-      if ((event.code && event.code > 1000) || event.message) {
+      if ((event.code && event.code > 1000) || event.message)
+      {
         console.log(
           `WebSocket closed abnormally for ${websocket.url}:`,
           `\n- Code: ${event.code || "none"}`,
@@ -90,7 +100,8 @@ const createMiddleware = () => {
           `\n- Current reconnection attempts: ${currentCount}`
         );
 
-        if (currentCount >= MAX_RECONNECT_ATTEMPTS) {
+        if (currentCount >= MAX_RECONNECT_ATTEMPTS)
+        {
           console.warn(
             `Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached for ${host}. Giving up.`
           );
@@ -98,7 +109,8 @@ const createMiddleware = () => {
         }
 
         reconnect(websocket, dispatch, config);
-      } else {
+      } else
+      {
         console.log(
           `WebSocket closed normally for ${websocket.url}`,
           `\n- Code: ${event.code || "none"}`,
@@ -108,26 +120,30 @@ const createMiddleware = () => {
       }
     };
     // On socket error
-    websocket.onerror = (event) => {
+    websocket.onerror = (event) =>
+    {
       dispatch(error(event));
       console.error("WebSocket error observed:", event);
     };
 
     // An optimistic callback assignment for WebSocket objects that support this
-    websocket.onconnecting = (event) => {
+    websocket.onconnecting = (event) =>
+    {
       dispatch(connecting(event, websocket));
     };
 
     websockets.push(websocket);
   };
 
-  const reconnect = (websocket, dispatch, config) => {
+  const reconnect = (websocket, dispatch, config) =>
+  {
     const host = websocket.url.split("&token")[0];
     const currentCount = reconnectCounts.get(host) || 0;
     const nextCount = currentCount + 1;
 
     // Check if next attempt would exceed max attempts
-    if (nextCount > MAX_RECONNECT_ATTEMPTS) {
+    if (nextCount > MAX_RECONNECT_ATTEMPTS)
+    {
       console.warn(
         `Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached for ${host}`
       );
@@ -142,7 +158,8 @@ const createMiddleware = () => {
         getPurposeFromUrl(ws.url) === purpose &&
         ws.readyState === 1
     );
-    if (hasActiveConnectionForSamePurpose) {
+    if (hasActiveConnectionForSamePurpose)
+    {
       console.log(
         `Another active connection for ${purpose} exists. Not attempting reconnection to ${websocket.url}`
       );
@@ -160,23 +177,23 @@ const createMiddleware = () => {
     const jitteredDelay = delay * (0.5 + Math.random());
 
     console.log(
-      `Scheduling reconnection attempt ${
-        currentCount + 1
+      `Scheduling reconnection attempt ${currentCount + 1
       }/${MAX_RECONNECT_ATTEMPTS} for ${websocket.url}:`,
       `\n- Base delay: ${delay}ms`,
       `\n- With jitter: ${jitteredDelay}ms`
     );
 
     // Clear any existing timeout for this host
-    if (reconnectTimeouts.has(host)) {
+    if (reconnectTimeouts.has(host))
+    {
       clearTimeout(reconnectTimeouts.get(host));
     }
 
     // Store new timeout
-    const timeoutId = setTimeout(function () {
+    const timeoutId = setTimeout(function ()
+    {
       console.log(
-        `Attempting reconnection ${
-          currentCount + 1
+        `Attempting reconnection ${currentCount + 1
         }/${MAX_RECONNECT_ATTEMPTS} to ${websocket.url}`
       );
       // Only remove the specific websocket that's reconnecting
@@ -191,12 +208,14 @@ const createMiddleware = () => {
   /**
    * Close the WebSocket connection and cleanup
    */
-  const close = (url) => {
+  const close = (url) =>
+  {
     if (url === null || url === undefined) return;
     const host = url.split("&token")[0];
 
     // Clear any pending reconnect timeout
-    if (reconnectTimeouts.has(host)) {
+    if (reconnectTimeouts.has(host))
+    {
       clearTimeout(reconnectTimeouts.get(host));
       reconnectTimeouts.delete(host);
     }
@@ -205,20 +224,29 @@ const createMiddleware = () => {
     reconnectCounts.delete(host);
 
     // Close matching sockets
-    for (const oneWS of websockets) {
-      if (oneWS.url.startsWith(host)) {
+    for (const oneWS of websockets)
+    {
+      if (oneWS.url.startsWith(host))
+      {
         console.log(`Closing WebSocket connection to ${oneWS.url} ...`);
         oneWS.close();
       }
     }
 
-    // Next remove them from array
-    // websockets = websockets.filter((oneWS) => !oneWS.url.startsWith(host));
+    // Remove closed sockets from the array immediately.
+    // This is safe because close() is only called on intentional reconnect/disconnect
+    // (WEBSOCKET_CONNECT / WEBSOCKET_DISCONNECT), never spontaneously.
+    // When onclose fires for any of these sockets it will find them absent from
+    // the array (!websockets.includes(websocket) === true) and return early,
+    // so no spurious auto-reconnect is triggered.
+    websockets = websockets.filter((oneWS) => !oneWS.url.startsWith(host));
   };
 
-  const send = (ws, payload, retries) => {
+  const send = (ws, payload, retries) =>
+  {
     if (ws.readyState === 1) ws.send(payload);
-    else if (retries > 0) {
+    else if (retries > 0)
+    {
       setTimeout(() => send(ws, payload, retries - 1), 500);
     }
   };
@@ -227,8 +255,10 @@ const createMiddleware = () => {
    * The primary Redux middleware function.
    * Each of the actions handled are user-dispatched.
    */
-  return (store) => (next) => (action) => {
-    switch (action.type) {
+  return (store) => (next) => (action) =>
+  {
+    switch (action.type)
+    {
       // User request to connect
       case WEBSOCKET_CONNECT:
         close(action.url);
@@ -245,8 +275,13 @@ const createMiddleware = () => {
       // User request to send a text message
       case WEBSOCKET_SEND_TEXT:
         const message = JSON.stringify(action.payload);
-        for (const oneWS of websockets) {
-          if (oneWS.url === action.url) {
+        for (const oneWS of websockets)
+        {
+          // Only consider sockets that are actually open (readyState === 1).
+          // Closed/closing sockets may still be in the array (e.g. stale entries
+          // from a previous session) and must not block the live socket.
+          if (oneWS.url === action.url && oneWS.readyState === 1)
+          {
             //websockets[i].send(message);
             send(oneWS, message, 2);
             next(action);
@@ -261,8 +296,11 @@ const createMiddleware = () => {
 
       // User request to send a text message
       case WEBSOCKET_SEND_BINARY:
-        for (const oneWS of websockets) {
-          if (oneWS.url === action.url) {
+        for (const oneWS of websockets)
+        {
+          // Same readyState guard as WEBSOCKET_SEND_TEXT: skip dead sockets.
+          if (oneWS.url === action.url && oneWS.readyState === 1)
+          {
             send(oneWS, action.payload, 2);
             next(action);
             return;
@@ -275,8 +313,10 @@ const createMiddleware = () => {
 
       // User request to simulate an error
       case WEBSOCKET_SIMULATE_ERROR:
-        for (const oneWS of websockets) {
-          if (oneWS.url === action.url) {
+        for (const oneWS of websockets)
+        {
+          if (oneWS.url === action.url)
+          {
             console.log(`Simulating WebSocket error for ${oneWS.url}`);
             oneWS.close(4000, "Simulated error for testing.");
             break;
