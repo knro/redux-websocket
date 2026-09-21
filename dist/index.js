@@ -5,12 +5,14 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.WEBSOCKET_MESSAGE = exports.WEBSOCKET_CLOSED = exports.WEBSOCKET_ERROR = exports.WEBSOCKET_OPEN = exports.WEBSOCKET_CONNECTING = exports.WEBSOCKET_SIMULATE_ERROR = exports.WEBSOCKET_SEND_BINARY = exports.WEBSOCKET_SEND_TEXT = exports.WEBSOCKET_DISCONNECT = exports.WEBSOCKET_CONNECT = undefined;
 
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }(); /* eslint-env browser */
+
+
 var _actions = require("./actions");
 
 var _websocket = require("./websocket");
 
 // Action types to be dispatched by the user
-/* eslint-env browser */
 var WEBSOCKET_CONNECT = exports.WEBSOCKET_CONNECT = "WEBSOCKET:CONNECT";
 var WEBSOCKET_DISCONNECT = exports.WEBSOCKET_DISCONNECT = "WEBSOCKET:DISCONNECT";
 var WEBSOCKET_SEND_TEXT = exports.WEBSOCKET_SEND_TEXT = "WEBSOCKET:SEND_TEXT";
@@ -43,10 +45,57 @@ var createMiddleware = function createMiddleware() {
   };
 
   /**
+   * Cancel every pending reconnection timer that belongs to the same purpose
+   * (e.g. "/message/user") as the given URL.
+   *
+   * This is required because timers are keyed by host (URL without "&token"), so a
+   * connect/disconnect for a *different* host never cancels the previous host's
+   * retry loop. Without this, switching networks/devices leaves the old host
+   * reconnecting in the background.
+   */
+  var cancelReconnectsForPurpose = function cancelReconnectsForPurpose(url) {
+    var purpose = getPurposeFromUrl(url);
+    if (!purpose) return;
+
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
+
+    try {
+      for (var _iterator = reconnectTimeouts[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+        var _ref = _step.value;
+
+        var _ref2 = _slicedToArray(_ref, 2);
+
+        var key = _ref2[0];
+        var timeoutId = _ref2[1];
+
+        if (getPurposeFromUrl(key) === purpose) {
+          clearTimeout(timeoutId);
+          reconnectTimeouts.delete(key);
+        }
+      }
+    } catch (err) {
+      _didIteratorError = true;
+      _iteratorError = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion && _iterator.return) {
+          _iterator.return();
+        }
+      } finally {
+        if (_didIteratorError) {
+          throw _iteratorError;
+        }
+      }
+    }
+  };
+
+  /**
    * A function to create the WebSocket object and attach the standard callbacks
    */
-  var initialize = function initialize(_ref, config) {
-    var dispatch = _ref.dispatch;
+  var initialize = function initialize(_ref3, config) {
+    var dispatch = _ref3.dispatch;
 
     // Instantiate the websocket.
     var websocket = (0, _websocket.createWebsocket)(config);
@@ -159,6 +208,15 @@ var createMiddleware = function createMiddleware() {
 
     // Store new timeout
     var timeoutId = setTimeout(function () {
+      // The socket was intentionally torn down (close() marks it and removes it from
+      // the tracked list) while this timer was in flight. Do NOT resurrect a
+      // connection to a host/network that is no longer wanted.
+      if (websocket._intentionallyClosed || !websockets.includes(websocket)) {
+        console.log("Skipping reconnection " + (currentCount + 1) + "/" + MAX_RECONNECT_ATTEMPTS + " to " + websocket.url + " \u2014 connection was closed explicitly");
+        reconnectTimeouts.delete(host);
+        return;
+      }
+
       console.log("Attempting reconnection " + (currentCount + 1) + "/" + MAX_RECONNECT_ATTEMPTS + " to " + websocket.url);
       // Only remove the specific websocket that's reconnecting
       websockets = websockets.filter(function (oneWS) {
@@ -175,28 +233,64 @@ var createMiddleware = function createMiddleware() {
    * Close the WebSocket connection and cleanup
    */
   var close = function close(url) {
-    if (url === null || url === undefined) return;
-    var host = url.split("&token")[0];
+    // A falsy URL means "close everything". Callers use it when they can no longer
+    // resolve which URL they were connected to (e.g. the app's own reducer wiped its
+    // last known URL after an abnormal drop). Previously this fell through with
+    // host === "" and silently failed to cancel the pending reconnect timers, which
+    // then resurrected connections to a host/network that was no longer reachable.
+    var closeAll = !url;
+    var host = closeAll ? null : url.split("&token")[0];
 
-    // Clear any pending reconnect timeout
-    if (reconnectTimeouts.has(host)) {
-      clearTimeout(reconnectTimeouts.get(host));
-      reconnectTimeouts.delete(host);
-    }
-
-    // Reset reconnect count when connection is closed explicitly
-    reconnectCounts.delete(host);
-
-    // Close matching sockets
-    var _iteratorNormalCompletion = true;
-    var _didIteratorError = false;
-    var _iteratorError = undefined;
+    // Clear any pending reconnect timeout(s)
+    var _iteratorNormalCompletion2 = true;
+    var _didIteratorError2 = false;
+    var _iteratorError2 = undefined;
 
     try {
-      for (var _iterator = websockets[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-        var oneWS = _step.value;
+      for (var _iterator2 = reconnectTimeouts[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+        var _ref4 = _step2.value;
 
-        if (oneWS.url.startsWith(host)) {
+        var _ref5 = _slicedToArray(_ref4, 2);
+
+        var key = _ref5[0];
+        var timeoutId = _ref5[1];
+
+        if (closeAll || key.startsWith(host)) {
+          clearTimeout(timeoutId);
+          reconnectTimeouts.delete(key);
+        }
+      }
+
+      // Reset reconnect count(s) when connection is closed explicitly
+    } catch (err) {
+      _didIteratorError2 = true;
+      _iteratorError2 = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion2 && _iterator2.return) {
+          _iterator2.return();
+        }
+      } finally {
+        if (_didIteratorError2) {
+          throw _iteratorError2;
+        }
+      }
+    }
+
+    if (closeAll) reconnectCounts.clear();else reconnectCounts.delete(host);
+
+    // Close matching sockets
+    var _iteratorNormalCompletion3 = true;
+    var _didIteratorError3 = false;
+    var _iteratorError3 = undefined;
+
+    try {
+      for (var _iterator3 = websockets[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+        var oneWS = _step3.value;
+
+        if (closeAll || oneWS.url.startsWith(host)) {
+          // Mark it so any reconnection timer already in flight refuses to resurrect it.
+          oneWS._intentionallyClosed = true;
           console.log("Closing WebSocket connection to " + oneWS.url + " ...");
           oneWS.close();
         }
@@ -209,21 +303,21 @@ var createMiddleware = function createMiddleware() {
       // the array (!websockets.includes(websocket) === true) and return early,
       // so no spurious auto-reconnect is triggered.
     } catch (err) {
-      _didIteratorError = true;
-      _iteratorError = err;
+      _didIteratorError3 = true;
+      _iteratorError3 = err;
     } finally {
       try {
-        if (!_iteratorNormalCompletion && _iterator.return) {
-          _iterator.return();
+        if (!_iteratorNormalCompletion3 && _iterator3.return) {
+          _iterator3.return();
         }
       } finally {
-        if (_didIteratorError) {
-          throw _iteratorError;
+        if (_didIteratorError3) {
+          throw _iteratorError3;
         }
       }
     }
 
-    websockets = websockets.filter(function (oneWS) {
+    websockets = closeAll ? [] : websockets.filter(function (oneWS) {
       return !oneWS.url.startsWith(host);
     });
   };
@@ -246,6 +340,11 @@ var createMiddleware = function createMiddleware() {
         switch (action.type) {
           // User request to connect
           case WEBSOCKET_CONNECT:
+            // A new connect replaces whatever connection existed for the same purpose
+            // (e.g. /message/user). Cancel the previous host's pending retry loop first,
+            // otherwise switching networks/devices leaves it reconnecting in the
+            // background and it eventually tears down the new, healthy connection.
+            cancelReconnectsForPurpose(action.url || action.payload && action.payload.url);
             close(action.url);
             initialize(store, action.payload);
             next(action);
@@ -253,6 +352,7 @@ var createMiddleware = function createMiddleware() {
 
           // User request to disconnect
           case WEBSOCKET_DISCONNECT:
+            cancelReconnectsForPurpose(action.url);
             close(action.url);
             next(action);
             break;
@@ -260,13 +360,13 @@ var createMiddleware = function createMiddleware() {
           // User request to send a text message
           case WEBSOCKET_SEND_TEXT:
             var _message = JSON.stringify(action.payload);
-            var _iteratorNormalCompletion2 = true;
-            var _didIteratorError2 = false;
-            var _iteratorError2 = undefined;
+            var _iteratorNormalCompletion4 = true;
+            var _didIteratorError4 = false;
+            var _iteratorError4 = undefined;
 
             try {
-              for (var _iterator2 = websockets[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                var oneWS = _step2.value;
+              for (var _iterator4 = websockets[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+                var oneWS = _step4.value;
 
                 // Only consider sockets that are actually open (readyState === 1).
                 // Closed/closing sockets may still be in the array (e.g. stale entries
@@ -276,75 +376,6 @@ var createMiddleware = function createMiddleware() {
                   send(oneWS, _message, 2);
                   next(action);
                   return;
-                }
-              }
-            } catch (err) {
-              _didIteratorError2 = true;
-              _iteratorError2 = err;
-            } finally {
-              try {
-                if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                  _iterator2.return();
-                }
-              } finally {
-                if (_didIteratorError2) {
-                  throw _iteratorError2;
-                }
-              }
-            }
-
-            console.warn("WebSocket is closed, ignoring text message (%s). Trigger a WEBSOCKET_CONNECT first.", _message);
-            break;
-
-          // User request to send a text message
-          case WEBSOCKET_SEND_BINARY:
-            var _iteratorNormalCompletion3 = true;
-            var _didIteratorError3 = false;
-            var _iteratorError3 = undefined;
-
-            try {
-              for (var _iterator3 = websockets[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-                var _oneWS = _step3.value;
-
-                // Same readyState guard as WEBSOCKET_SEND_TEXT: skip dead sockets.
-                if (_oneWS.url === action.url && _oneWS.readyState === 1) {
-                  send(_oneWS, action.payload, 2);
-                  next(action);
-                  return;
-                }
-              }
-            } catch (err) {
-              _didIteratorError3 = true;
-              _iteratorError3 = err;
-            } finally {
-              try {
-                if (!_iteratorNormalCompletion3 && _iterator3.return) {
-                  _iterator3.return();
-                }
-              } finally {
-                if (_didIteratorError3) {
-                  throw _iteratorError3;
-                }
-              }
-            }
-
-            console.warn("WebSocket is closed, ignoring binary message. Trigger a WEBSOCKET_CONNECT first.");
-            break;
-
-          // User request to simulate an error
-          case WEBSOCKET_SIMULATE_ERROR:
-            var _iteratorNormalCompletion4 = true;
-            var _didIteratorError4 = false;
-            var _iteratorError4 = undefined;
-
-            try {
-              for (var _iterator4 = websockets[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
-                var _oneWS2 = _step4.value;
-
-                if (_oneWS2.url === action.url) {
-                  console.log("Simulating WebSocket error for " + _oneWS2.url);
-                  _oneWS2.close(4000, "Simulated error for testing.");
-                  break;
                 }
               }
             } catch (err) {
@@ -358,6 +389,75 @@ var createMiddleware = function createMiddleware() {
               } finally {
                 if (_didIteratorError4) {
                   throw _iteratorError4;
+                }
+              }
+            }
+
+            console.warn("WebSocket is closed, ignoring text message (%s). Trigger a WEBSOCKET_CONNECT first.", _message);
+            break;
+
+          // User request to send a text message
+          case WEBSOCKET_SEND_BINARY:
+            var _iteratorNormalCompletion5 = true;
+            var _didIteratorError5 = false;
+            var _iteratorError5 = undefined;
+
+            try {
+              for (var _iterator5 = websockets[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
+                var _oneWS = _step5.value;
+
+                // Same readyState guard as WEBSOCKET_SEND_TEXT: skip dead sockets.
+                if (_oneWS.url === action.url && _oneWS.readyState === 1) {
+                  send(_oneWS, action.payload, 2);
+                  next(action);
+                  return;
+                }
+              }
+            } catch (err) {
+              _didIteratorError5 = true;
+              _iteratorError5 = err;
+            } finally {
+              try {
+                if (!_iteratorNormalCompletion5 && _iterator5.return) {
+                  _iterator5.return();
+                }
+              } finally {
+                if (_didIteratorError5) {
+                  throw _iteratorError5;
+                }
+              }
+            }
+
+            console.warn("WebSocket is closed, ignoring binary message. Trigger a WEBSOCKET_CONNECT first.");
+            break;
+
+          // User request to simulate an error
+          case WEBSOCKET_SIMULATE_ERROR:
+            var _iteratorNormalCompletion6 = true;
+            var _didIteratorError6 = false;
+            var _iteratorError6 = undefined;
+
+            try {
+              for (var _iterator6 = websockets[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+                var _oneWS2 = _step6.value;
+
+                if (_oneWS2.url === action.url) {
+                  console.log("Simulating WebSocket error for " + _oneWS2.url);
+                  _oneWS2.close(4000, "Simulated error for testing.");
+                  break;
+                }
+              }
+            } catch (err) {
+              _didIteratorError6 = true;
+              _iteratorError6 = err;
+            } finally {
+              try {
+                if (!_iteratorNormalCompletion6 && _iterator6.return) {
+                  _iterator6.return();
+                }
+              } finally {
+                if (_didIteratorError6) {
+                  throw _iteratorError6;
                 }
               }
             }

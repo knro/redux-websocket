@@ -38,6 +38,30 @@ const createMiddleware = () =>
   };
 
   /**
+   * Cancel every pending reconnection timer that belongs to the same purpose
+   * (e.g. "/message/user") as the given URL.
+   *
+   * This is required because timers are keyed by host (URL without "&token"), so a
+   * connect/disconnect for a *different* host never cancels the previous host's
+   * retry loop. Without this, switching networks/devices leaves the old host
+   * reconnecting in the background.
+   */
+  const cancelReconnectsForPurpose = (url) =>
+  {
+    const purpose = getPurposeFromUrl(url);
+    if (!purpose) return;
+
+    for (const [key, timeoutId] of reconnectTimeouts)
+    {
+      if (getPurposeFromUrl(key) === purpose)
+      {
+        clearTimeout(timeoutId);
+        reconnectTimeouts.delete(key);
+      }
+    }
+  };
+
+  /**
    * A function to create the WebSocket object and attach the standard callbacks
    */
   const initialize = ({ dispatch }, config) =>
@@ -192,6 +216,18 @@ const createMiddleware = () =>
     // Store new timeout
     const timeoutId = setTimeout(function ()
     {
+      // The socket was intentionally torn down (close() marks it and removes it from
+      // the tracked list) while this timer was in flight. Do NOT resurrect a
+      // connection to a host/network that is no longer wanted.
+      if (websocket._intentionallyClosed || !websockets.includes(websocket))
+      {
+        console.log(
+          `Skipping reconnection ${currentCount + 1}/${MAX_RECONNECT_ATTEMPTS} to ${websocket.url} — connection was closed explicitly`
+        );
+        reconnectTimeouts.delete(host);
+        return;
+      }
+
       console.log(
         `Attempting reconnection ${currentCount + 1
         }/${MAX_RECONNECT_ATTEMPTS} to ${websocket.url}`
@@ -210,24 +246,35 @@ const createMiddleware = () =>
    */
   const close = (url) =>
   {
-    if (url === null || url === undefined) return;
-    const host = url.split("&token")[0];
+    // A falsy URL means "close everything". Callers use it when they can no longer
+    // resolve which URL they were connected to (e.g. the app's own reducer wiped its
+    // last known URL after an abnormal drop). Previously this fell through with
+    // host === "" and silently failed to cancel the pending reconnect timers, which
+    // then resurrected connections to a host/network that was no longer reachable.
+    const closeAll = !url;
+    const host = closeAll ? null : url.split("&token")[0];
 
-    // Clear any pending reconnect timeout
-    if (reconnectTimeouts.has(host))
+    // Clear any pending reconnect timeout(s)
+    for (const [key, timeoutId] of reconnectTimeouts)
     {
-      clearTimeout(reconnectTimeouts.get(host));
-      reconnectTimeouts.delete(host);
+      if (closeAll || key.startsWith(host))
+      {
+        clearTimeout(timeoutId);
+        reconnectTimeouts.delete(key);
+      }
     }
 
-    // Reset reconnect count when connection is closed explicitly
-    reconnectCounts.delete(host);
+    // Reset reconnect count(s) when connection is closed explicitly
+    if (closeAll) reconnectCounts.clear();
+    else reconnectCounts.delete(host);
 
     // Close matching sockets
     for (const oneWS of websockets)
     {
-      if (oneWS.url.startsWith(host))
+      if (closeAll || oneWS.url.startsWith(host))
       {
+        // Mark it so any reconnection timer already in flight refuses to resurrect it.
+        oneWS._intentionallyClosed = true;
         console.log(`Closing WebSocket connection to ${oneWS.url} ...`);
         oneWS.close();
       }
@@ -239,7 +286,9 @@ const createMiddleware = () =>
     // When onclose fires for any of these sockets it will find them absent from
     // the array (!websockets.includes(websocket) === true) and return early,
     // so no spurious auto-reconnect is triggered.
-    websockets = websockets.filter((oneWS) => !oneWS.url.startsWith(host));
+    websockets = closeAll
+      ? []
+      : websockets.filter((oneWS) => !oneWS.url.startsWith(host));
   };
 
   const send = (ws, payload, retries) =>
@@ -261,6 +310,13 @@ const createMiddleware = () =>
     {
       // User request to connect
       case WEBSOCKET_CONNECT:
+        // A new connect replaces whatever connection existed for the same purpose
+        // (e.g. /message/user). Cancel the previous host's pending retry loop first,
+        // otherwise switching networks/devices leaves it reconnecting in the
+        // background and it eventually tears down the new, healthy connection.
+        cancelReconnectsForPurpose(
+          action.url || (action.payload && action.payload.url)
+        );
         close(action.url);
         initialize(store, action.payload);
         next(action);
@@ -268,6 +324,7 @@ const createMiddleware = () =>
 
       // User request to disconnect
       case WEBSOCKET_DISCONNECT:
+        cancelReconnectsForPurpose(action.url);
         close(action.url);
         next(action);
         break;
